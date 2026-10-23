@@ -4,37 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>代禱管理中心 - TBC Serve</title>
-    
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
-    
-    <!-- 引入 Tailwind CSS 與 Babel -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@babel/standalone@7.22.20/babel.min.js"></script>
-
-    <!-- 沿用原本的色彩設定 -->
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        indigo: {50: '#f7eefc', 100: '#eddaf8', 200: '#d9afef', 300: '#c17ee6', 400: '#a747db', 500: '#941fd3', 600: '#8806ce', 700: '#7205ad', 800: '#5c048c', 900: '#49036f'},
-                        emerald: {50: '#f6faf5', 100: '#ecf4ea', 200: '#d7e8d3', 300: '#bddab8', 400: '#a2ca9a', 500: '#8ebe84', 600: '#81b776', 700: '#6c9a63', 800: '#587c50', 900: '#466340'},
-                    },
-                    fontFamily: {
-                        sans: ['"Noto Sans TC"', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'sans-serif'],
-                    },
-                    boxShadow: {
-                        'soft': '0 4px 20px -2px rgba(136, 6, 206, 0.1)',
-                        'hover-soft': '0 10px 25px -5px rgba(136, 6, 206, 0.15), 0 8px 10px -6px rgba(136, 6, 206, 0.1)',
-                        'button': '0 4px 14px 0 rgba(136, 6, 206, 0.3)',
-                    }
-                }
-            }
-        }
-    </script>
-
     <script type="importmap">
     {
         "imports": {
@@ -45,13 +17,11 @@
     }
     </script>
     <style type="text/tailwindcss">
-        body { background-color: #f8fafc; font-family: "Noto Sans TC", sans-serif; -webkit-tap-highlight-color: transparent; }
+        body { background-color: #f8fafc; font-family: "Noto Sans TC", sans-serif; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
-        @keyframes slideOut { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(0.95); } }
-        .animate-slide-out { animation: slideOut 0.3s ease-in forwards; }
     </style>
 </head>
 <body>
@@ -60,7 +30,7 @@
     <script type="text/babel" data-type="module">
         import React, { useState, useEffect } from 'react';
         import { createRoot } from 'react-dom/client';
-        import { Heart, Globe, Users, User, ShieldAlert, CheckCircle, Clock, Plus, Lock, Trash2, XCircle } from 'lucide-react';
+        import { Heart, Globe, Users, User, Plus, CheckCircle, Clock, Lock, ShieldAlert, LogIn, X } from 'lucide-react';
 
         const CATEGORIES = [
             { id: 'all', label: '全部', icon: Heart },
@@ -70,247 +40,166 @@
             { id: 'personal', label: '個人', icon: User },
         ];
 
-        // 初始模擬資料
+        // 模擬資料庫
         const MOCK_PRAYERS = [
-            { id: 1, type: 'kingdom', content: '為下週的普世宣教大會講員出入平安代禱，求主賜下智慧的話語。', status: 'published', isPrivate: false, date: '2026-10-23', author: '行政辦公室' },
-            { id: 2, type: 'personal', content: '王弟兄近期將進行脊椎微創手術，求主保守過程平安，也賜給醫療團隊智慧。', status: 'pending', isPrivate: true, date: '2026-10-22', author: '林小組長' },
-            { id: 3, type: 'outreach', content: '本週末的社區福音茶會，目前已有 20 位新朋友報名，求主預備他們的心。', status: 'published', isPrivate: false, date: '2026-10-21', author: '外展部' },
-            { id: 4, type: 'personal', content: '李姊妹的母親目前在加護病房，求主親自醫治並安慰家屬的心。', status: 'pending', isPrivate: true, date: '2026-10-23', author: '李姊妹' },
-            { id: 5, type: 'fellowship', content: '學青團契下個月的迎新露營，求主保守天氣與所有籌備同工的合一。', status: 'pending', isPrivate: false, date: '2026-10-23', author: '學青會長' }
+            { id: 1, type: 'kingdom', content: '為下週的普世宣教大會代禱。', status: 'published', isPrivate: false, date: '2026-10-23', author: '行政辦公室' },
+            { id: 2, type: 'personal', content: '王弟兄即將進行手術，求主保守。', status: 'pending', isPrivate: true, date: '2026-10-22', author: '林小組長' }
         ];
 
-        const PrayerDashboard = ({ isAdmin }) => {
+        const PrayerApp = () => {
+            // 狀態管理：登入狀態、權限、視圖模式
+            const [session, setSession] = useState(null);
+            const [isAdmin, setIsAdmin] = useState(false); // 實際應用應從 Supabase user_roles 取得
+            const [showLoginModal, setShowLoginModal] = useState(false);
+            
             const [activeTab, setActiveTab] = useState('all');
-            const [viewMode, setViewMode] = useState('board'); // 'board' 或 'pending'
+            const [viewMode, setViewMode] = useState('board');
             const [prayers, setPrayers] = useState([]);
             const [isLoading, setIsLoading] = useState(true);
-            const [animatingId, setAnimatingId] = useState(null); // 處理核准時的退出動畫
 
-            // 模擬撈取資料
             useEffect(() => {
-                setIsLoading(true);
+                // 模擬公開讀取 API (無須 Session)
                 setTimeout(() => {
                     setPrayers(MOCK_PRAYERS);
                     setIsLoading(false);
-                }, 600);
+                }, 500);
             }, []);
 
-            // 若切換為非管理員，強制回到 board 模式
-            useEffect(() => {
-                if (!isAdmin && viewMode === 'pending') {
-                    setViewMode('board');
+            // 提報攔截邏輯
+            const handleAddPrayerClick = () => {
+                if (!session) {
+                    setShowLoginModal(true);
+                } else {
+                    alert('開啟提報表單 Modal (已登入狀態)');
                 }
-            }, [isAdmin, viewMode]);
+            };
+
+            // 模擬登入流程
+            const handleMockLogin = (role) => {
+                setSession({ user: { name: 'Test User' } });
+                setIsAdmin(role === 'admin');
+                setShowLoginModal(false);
+            };
 
             const pendingCount = prayers.filter(p => p.status === 'pending').length;
 
-            const handleApprove = (id) => {
-                setAnimatingId(id);
-                // 樂觀更新：延遲 300ms 讓 CSS 動畫播完再移除 DOM
-                setTimeout(() => {
-                    setPrayers(prev => prev.map(p => p.id === id ? { ...p, status: 'published' } : p));
-                    setAnimatingId(null);
-                }, 300);
-            };
-
-            const handleReject = (id) => {
-                if(confirm('確定要退回或刪除此代禱事項嗎？')) {
-                    setAnimatingId(id);
-                    setTimeout(() => {
-                        setPrayers(prev => prev.filter(p => p.id !== id));
-                        setAnimatingId(null);
-                    }, 300);
-                }
-            };
-
             return (
-                <div className="max-w-3xl mx-auto w-full px-4 sm:px-6 py-8 animate-fade-in pb-24">
-                    {/* 標題與操作區 */}
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 mb-8">
+                <div className="min-h-screen flex flex-col relative pb-24">
+                    {/* 頂部導覽與登入狀態 */}
+                    <header className="bg-white border-b border-slate-200 px-4 py-3 flex justify-between items-center sticky top-0 z-40">
+                        <a href="./index.html" className="font-bold text-slate-800 flex items-center gap-2">
+                            <Heart className="text-rose-500" size={20} /> TBC Serve
+                        </a>
                         <div>
-                            <h2 className="text-3xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-                                <Heart className="text-emerald-500" size={28} />
-                                守望代禱
-                            </h2>
-                            <p className="text-sm font-medium text-slate-500 mt-2">彼此相顧，激發愛心，勉勵行善</p>
-                        </div>
-                        <div className="flex gap-3 w-full sm:w-auto">
-                            {isAdmin && (
-                                <button 
-                                    onClick={() => setViewMode(viewMode === 'board' ? 'pending' : 'board')}
-                                    className={`relative flex-1 sm:flex-none flex items-center justify-center px-4 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 border-2 ${
-                                        viewMode === 'pending' 
-                                            ? 'bg-indigo-50 border-indigo-200 text-indigo-700 shadow-sm' 
-                                            : 'bg-white border-slate-100 text-slate-600 hover:bg-slate-50'
-                                    }`}
-                                >
-                                    {viewMode === 'pending' ? '返回佈告欄' : '審核收件匣'}
-                                    {pendingCount > 0 && viewMode === 'board' && (
-                                        <span className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white text-xs flex items-center justify-center rounded-full font-black border-2 border-white shadow-sm">
-                                            {pendingCount}
-                                        </span>
-                                    )}
+                            {session ? (
+                                <div className="text-sm font-semibold text-slate-600 flex items-center gap-3">
+                                    <span>{isAdmin ? '管理員' : '會友'} 已登入</span>
+                                    <button onClick={() => { setSession(null); setIsAdmin(false); setViewMode('board'); }} className="text-rose-600 hover:underline">登出</button>
+                                </div>
+                            ) : (
+                                <button onClick={() => setShowLoginModal(true)} className="text-sm font-bold text-slate-600 hover:text-slate-900 flex items-center gap-1">
+                                    <LogIn size={16} /> 登入
                                 </button>
                             )}
-                            <button className="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-button flex items-center justify-center gap-2 transition-transform active:scale-95">
-                                <Plus size={18} strokeWidth={2.5} /> 提報代禱
-                            </button>
                         </div>
-                    </div>
+                    </header>
 
-                    {/* 分類滑動標籤 (僅佈告欄模式顯示) */}
-                    {viewMode === 'board' && (
-                        <div className="flex overflow-x-auto no-scrollbar gap-2 sm:gap-3 mb-6 pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
-                            {CATEGORIES.map(cat => {
-                                const Icon = cat.icon;
-                                const isActive = activeTab === cat.id;
-                                return (
+                    <main className="max-w-3xl mx-auto w-full px-4 sm:px-6 py-8 animate-fade-in">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 mb-8">
+                            <div>
+                                <h2 className="text-3xl font-black text-slate-900 tracking-tight">守望代禱</h2>
+                                <p className="text-sm font-medium text-slate-500 mt-2">彼此相顧，激發愛心，勉勵行善</p>
+                            </div>
+                            <div className="flex gap-3 w-full sm:w-auto">
+                                {isAdmin && (
+                                    <button 
+                                        onClick={() => setViewMode(viewMode === 'board' ? 'pending' : 'board')}
+                                        className="relative flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-sm font-bold border-2 bg-indigo-50 border-indigo-200 text-indigo-700"
+                                    >
+                                        {viewMode === 'pending' ? '返回佈告欄' : '審核收件匣'}
+                                        {pendingCount > 0 && viewMode === 'board' && (
+                                            <span className="absolute -top-2 -right-2 w-6 h-6 bg-rose-500 text-white text-xs flex items-center justify-center rounded-full font-black shadow-sm">{pendingCount}</span>
+                                        )}
+                                    </button>
+                                )}
+                                <button onClick={handleAddPrayerClick} className="flex-1 sm:flex-none bg-rose-600 hover:bg-rose-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 active:scale-95 transition-transform">
+                                    <Plus size={18} strokeWidth={2.5} /> 提報代禱
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* 分類標籤 (僅佈告欄顯示) */}
+                        {viewMode === 'board' && (
+                            <div className="flex overflow-x-auto no-scrollbar gap-2 mb-6 pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
+                                {CATEGORIES.map(cat => (
                                     <button
                                         key={cat.id}
                                         onClick={() => setActiveTab(cat.id)}
-                                        className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap transition-all duration-200 border-2 ${
-                                            isActive 
-                                                ? 'bg-slate-800 border-slate-800 text-white shadow-md transform -translate-y-0.5' 
-                                                : 'bg-white border-slate-100 text-slate-500 hover:border-slate-200 hover:text-slate-700'
+                                        className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-all border-2 ${
+                                            activeTab === cat.id ? 'bg-slate-800 border-slate-800 text-white' : 'bg-white border-slate-100 text-slate-500'
                                         }`}
                                     >
-                                        <Icon size={16} strokeWidth={2.5} className={isActive ? "text-emerald-400" : "text-slate-400"} />
-                                        {cat.label}
+                                        <cat.icon size={16} className={activeTab === cat.id ? "text-rose-400" : ""} /> {cat.label}
                                     </button>
-                                )
-                            })}
-                        </div>
-                    )}
-
-                    {/* 審核模式提示 */}
-                    {viewMode === 'pending' && (
-                        <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 mb-6 flex items-start gap-3">
-                            <ShieldAlert className="text-indigo-500 shrink-0 mt-0.5" size={20} />
-                            <div>
-                                <h4 className="text-sm font-bold text-indigo-900">傳道人/同工把關機制</h4>
-                                <p className="text-xs text-indigo-700 mt-1 font-medium leading-relaxed">請確認當事人意願，若為過度私密事項，請確保含有「鎖頭」圖示（僅核心同工可見），修飾後再行發布。</p>
+                                ))}
                             </div>
-                        </div>
-                    )}
+                        )}
 
-                    {/* 列表內容區 */}
-                    {isLoading ? (
-                        <div className="space-y-4">
-                            {[1, 2, 3].map(i => <div key={i} className="h-32 bg-white border border-slate-100 rounded-2xl animate-pulse"></div>)}
-                        </div>
-                    ) : (
+                        {/* 列表渲染區 */}
                         <div className="flex flex-col gap-4">
                             {prayers
                                 .filter(p => viewMode === 'pending' ? p.status === 'pending' : p.status === 'published')
                                 .filter(p => (activeTab === 'all' || p.type === activeTab) && viewMode === 'board' ? true : viewMode === 'pending')
                                 .map(prayer => (
-                                    <div 
-                                        key={prayer.id} 
-                                        className={`bg-white p-5 sm:p-6 rounded-2xl border border-slate-100 shadow-soft hover:shadow-hover-soft transition-all duration-300 ${animatingId === prayer.id ? 'animate-slide-out' : ''}`}
-                                    >
+                                    <div key={prayer.id} className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">
                                         <div>
-                                            <div className="flex justify-between items-start mb-3">
-                                                <div className="flex items-center gap-2">
-                                                    <span className={`text-xs font-black px-2.5 py-1 rounded-lg flex items-center gap-1.5 ${
-                                                        prayer.type === 'kingdom' ? 'bg-blue-50 text-blue-600' :
-                                                        prayer.type === 'personal' ? 'bg-amber-50 text-amber-600' :
-                                                        prayer.type === 'outreach' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-600'
-                                                    }`}>
-                                                        {CATEGORIES.find(c => c.id === prayer.type)?.label}
-                                                    </span>
-                                                    {prayer.isPrivate && (
-                                                        <span className="flex items-center gap-1 text-[11px] font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded-lg" title="高敏感度：僅同工可見">
-                                                            <Lock size={12} /> 限同工
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                <span className="text-xs font-semibold text-slate-400 flex items-center gap-1.5">
-                                                    <Clock size={14} /> {prayer.date}
-                                                </span>
-                                            </div>
-                                            <p className="text-slate-800 text-base sm:text-[17px] leading-relaxed font-medium mb-5">{prayer.content}</p>
-                                        </div>
-                                        
-                                        <div className="flex justify-between items-center pt-4 border-t border-slate-50 mt-auto">
-                                            <span className="text-xs font-medium text-slate-400 flex items-center gap-1">
-                                                <User size={14} /> 提報：{prayer.author}
-                                            </span>
-                                            
-                                            {/* 審核操作按鈕 */}
-                                            {viewMode === 'pending' && isAdmin && (
+                                            <div className="flex justify-between mb-3">
                                                 <div className="flex gap-2">
-                                                    <button 
-                                                        onClick={() => handleReject(prayer.id)}
-                                                        className="px-3 py-2 rounded-xl text-xs font-bold text-slate-500 bg-slate-50 hover:bg-red-50 hover:text-red-600 transition-colors flex items-center gap-1.5"
-                                                    >
-                                                        <Trash2 size={16} /> <span className="hidden sm:inline">退回/刪除</span>
-                                                    </button>
-                                                    <button 
-                                                        onClick={() => handleApprove(prayer.id)}
-                                                        className="px-4 py-2 rounded-xl text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-button transition-transform active:scale-95 flex items-center gap-1.5"
-                                                    >
-                                                        <CheckCircle size={18} strokeWidth={2.5} /> 核准發布
-                                                    </button>
+                                                    <span className="text-xs font-black px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600">{CATEGORIES.find(c => c.id === prayer.type)?.label}</span>
+                                                    {prayer.isPrivate && <span className="flex items-center gap-1 text-[11px] font-bold text-slate-500 bg-slate-50 px-2 rounded-lg"><Lock size={12}/>限同工</span>}
                                                 </div>
+                                                <span className="text-xs text-slate-400">{prayer.date}</span>
+                                            </div>
+                                            <p className="text-slate-800 font-medium mb-4">{prayer.content}</p>
+                                        </div>
+                                        <div className="flex justify-between items-center pt-3 border-t border-slate-50 text-xs text-slate-400">
+                                            <span>提報：{prayer.author}</span>
+                                            {viewMode === 'pending' && isAdmin && (
+                                                <button className="px-3 py-1.5 rounded-lg font-bold text-white bg-emerald-600 flex items-center gap-1">
+                                                    <CheckCircle size={14}/> 核准
+                                                </button>
                                             )}
                                         </div>
                                     </div>
-                            ))}
-                            
-                            {/* Empty State */}
-                            {prayers.filter(p => viewMode === 'pending' ? p.status === 'pending' : p.status === 'published').filter(p => (activeTab === 'all' || p.type === activeTab) && viewMode === 'board' ? true : viewMode === 'pending').length === 0 && (
-                                <div className="py-16 flex flex-col items-center justify-center text-slate-400 bg-white border border-slate-100 border-dashed rounded-3xl">
-                                    <div className="bg-slate-50 p-4 rounded-full mb-4">
-                                        <CheckCircle size={32} className="text-slate-300" />
-                                    </div>
-                                    <h3 className="text-lg font-bold text-slate-600 mb-1">
-                                        {viewMode === 'pending' ? '太棒了，收件匣已清空！' : '目前沒有相關代禱事項'}
-                                    </h3>
-                                    <p className="text-sm font-medium text-slate-400">
-                                        {viewMode === 'pending' ? '所有提報的代禱事項都已處理完畢' : '選擇其他分類，或點擊右上方新增提報'}
-                                    </p>
+                                ))}
+                        </div>
+                    </main>
+
+                    {/* 漸進式登入攔截 Modal */}
+                    {showLoginModal && (
+                        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+                            <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-sm w-full shadow-xl relative">
+                                <button onClick={() => setShowLoginModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
+                                    <X size={20} />
+                                </button>
+                                <div className="text-center mb-6">
+                                    <div className="w-12 h-12 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-3"><Lock size={24} /></div>
+                                    <h3 className="text-xl font-black text-slate-900">需要登入</h3>
+                                    <p className="text-sm text-slate-500 mt-2">為了保護代禱資訊安全，新增事項前請先登入系統。</p>
                                 </div>
-                            )}
+                                <div className="space-y-3">
+                                    <button onClick={() => handleMockLogin('user')} className="w-full bg-slate-800 text-white font-bold py-3 rounded-xl hover:bg-slate-900">以 會友 身份登入</button>
+                                    <button onClick={() => handleMockLogin('admin')} className="w-full bg-indigo-50 text-indigo-700 font-bold py-3 rounded-xl hover:bg-indigo-100">以 管理員 身份登入</button>
+                                </div>
+                            </div>
                         </div>
                     )}
                 </div>
             );
         };
 
-        // 開發與展示用的 Wrapper 容器 (包含身分切換器)
-        const App = () => {
-            const [isAdmin, setIsAdmin] = useState(false);
-
-            return (
-                <div className="min-h-screen flex flex-col relative">
-                    {/* Demo 控制列 (真實環境不需要此區塊) */}
-                    <div className="bg-slate-900 text-white p-3 text-center text-sm font-bold flex flex-col sm:flex-row items-center justify-center gap-3 sticky top-0 z-50">
-                        <span className="text-slate-400">Demo 控制台：</span>
-                        <div className="flex bg-slate-800 p-1 rounded-lg">
-                            <button 
-                                onClick={() => setIsAdmin(false)}
-                                className={`px-4 py-1.5 rounded-md transition-colors ${!isAdmin ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}
-                            >
-                                一般會友視角
-                            </button>
-                            <button 
-                                onClick={() => setIsAdmin(true)}
-                                className={`px-4 py-1.5 rounded-md transition-colors ${isAdmin ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}
-                            >
-                                傳道人把關視角
-                            </button>
-                        </div>
-                    </div>
-
-                    <div className="flex-1 bg-slate-50">
-                        <PrayerDashboard isAdmin={isAdmin} />
-                    </div>
-                </div>
-            );
-        }
-
         const root = createRoot(document.getElementById('root'));
-        root.render(<App />);
+        root.render(<PrayerApp />);
     </script>
 </body>
 </html>
